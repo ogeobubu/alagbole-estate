@@ -36,6 +36,7 @@ return [
     ],
 
     'termii' => [
+        'enabled' => env('TERMII_ENABLED', false),
         'api_key' => env('TERMII_API_KEY'),
         'secret_key' => env('TERMII_SECRET_KEY'),
         'sender_id' => env('TERMII_SENDER_ID', 'EstatePay'),

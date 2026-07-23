@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Estate;
+use App\Models\Payment;
+use App\Services\TermiiSms;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 
@@ -7,14 +10,14 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Artisan::command('payments:remind {estate?} {--all}', function (?string $estate) {
-    /** @var \App\Services\TermiiSms $sms */
-    $sms = app(\App\Services\TermiiSms::class);
-
+Artisan::command('payments:remind {estateId?} {--all}', function () {
+    $sms = app(TermiiSms::class);
     $period = now()->format('Y-m');
+    $estateId = $this->argument('estateId');
+
     $estates = $this->option('all')
-        ? \App\Models\Estate::all()
-        : \App\Models\Estate::when($estate, fn ($q, $id) => $q->where('id', $id))->get();
+        ? Estate::all()
+        : Estate::when($estateId, fn ($q, $id) => $q->where('id', $id))->get();
 
     if ($estates->isEmpty()) {
         $this->error('No estates found.');
@@ -24,7 +27,7 @@ Artisan::command('payments:remind {estate?} {--all}', function (?string $estate)
     $totalSent = 0;
 
     foreach ($estates as $estateModel) {
-        $paidTenantIds = \App\Models\Payment::where('estate_id', $estateModel->id)
+        $paidTenantIds = Payment::where('estate_id', $estateModel->id)
             ->where('period', $period)
             ->where('status', 'paid')
             ->pluck('tenant_id');

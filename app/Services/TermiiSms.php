@@ -20,6 +20,11 @@ class TermiiSms
 
     public function send(string $phone, string $message): bool
     {
+        if (!config('services.termii.enabled')) {
+            Log::info('Termii SMS disabled, skipping', ['phone' => $phone]);
+            return false;
+        }
+
         $phone = $this->formatPhone($phone);
 
         try {

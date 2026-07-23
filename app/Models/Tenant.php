@@ -35,11 +35,13 @@ class Tenant extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function currentPayment(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Payment::class)->where('period', now()->format('Y-m'));
+    }
+
     public function getCurrentPaymentAttribute(): ?Payment
     {
-        $period = now()->format('Y-m');
-        return $this->payments()
-            ->where('period', $period)
-            ->first();
+        return $this->currentPayment()->first();
     }
 }
