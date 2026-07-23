@@ -51,7 +51,7 @@ Route::middleware('auth')->group(function () {
         ->name('estates.payments.markPaid');
     Route::post('estates/{estate}/payments/generate', [PaymentController::class, 'generatePeriodPayments'])
         ->name('estates.payments.generate');
-    Route::post('estates/{estate}/payments/{payment}/paystack', [PaymentController::class, 'initializePaystack'])
+    Route::post('estates/{estate}/payments/paystack', [PaymentController::class, 'initializePaystack'])
         ->name('estates.payments.paystack');
     Route::delete('estates/{estate}/payments/{payment}', [PaymentController::class, 'destroy'])
         ->name('estates.payments.destroy');

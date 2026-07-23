@@ -4,7 +4,7 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import { Estate, Tenant, PageProps } from '@/types';
-import { Head, Link, useForm, router } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 
 declare global {
@@ -48,35 +48,38 @@ export default function Create({
         }
     };
 
-    const handlePaystackPayment = () => {
+    const handlePaystackPayment = async () => {
         if (!data.tenant_id) {
             return;
         }
 
         setPayingOnline(true);
 
-        router.post(
-            route('estates.payments.paystack', { estate: estate.id, payment: 'pending' }),
-            {
-                tenant_id: data.tenant_id,
-                amount: data.amount,
-                period: data.period,
-                payment_method: 'paystack',
-            },
-            {
-                preserveState: true,
-                onSuccess: (page) => {
-                    const props = page.props as Record<string, unknown>;
-                    const flash = props.flash as { data?: { authorization_url?: string; reference?: string } } | undefined;
-                    const paymentData = flash?.data;
-
-                    if (paymentData?.authorization_url) {
-                        window.location.href = paymentData.authorization_url;
-                    }
+        try {
+            const response = await fetch(route('estates.payments.paystack', estate.id), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content || '',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
                 },
-                onFinish: () => setPayingOnline(false),
+                body: JSON.stringify({
+                    tenant_id: data.tenant_id,
+                    amount: data.amount,
+                    period: data.period,
+                    payment_method: 'paystack',
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.authorization_url) {
+                window.location.href = result.authorization_url;
             }
-        );
+        } catch {
+            setPayingOnline(false);
+        }
     };
 
     return (

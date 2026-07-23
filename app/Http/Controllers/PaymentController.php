@@ -156,19 +156,45 @@ class PaymentController extends Controller
         return back()->with('success', "{$created} payment(s) generated for {$period}.");
     }
 
-    public function initializePaystack(Estate $estate, Payment $payment)
+    public function initializePaystack(Request $request, Estate $estate)
     {
         $this->authorizeEstate($estate);
 
-        if ($payment->status === 'paid') {
+        $validated = $request->validate([
+            'tenant_id' => 'required|exists:tenants,id',
+            'amount' => 'required|numeric|min:1',
+            'period' => 'required|string',
+            'payment_method' => 'nullable|string',
+        ]);
+
+        $tenant = Tenant::findOrFail($validated['tenant_id']);
+
+        if ($tenant->estate_id !== $estate->id) {
+            abort(403);
+        }
+
+        $existing = Payment::where('tenant_id', $tenant->id)
+            ->where('period', $validated['period'])
+            ->first();
+
+        if ($existing && $existing->status === 'paid') {
             return back()->withErrors(['payment' => 'This payment is already completed.']);
         }
 
-        $tenant = $payment->tenant;
+        $payment = $existing ?? $estate->payments()->create([
+            'tenant_id' => $tenant->id,
+            'amount' => $validated['amount'],
+            'period' => $validated['period'],
+            'status' => 'pending',
+        ]);
+
         $email = $tenant->email ?? Auth::user()->email;
 
         $reference = 'EPAY-' . strtoupper(bin2hex(random_bytes(8)));
-        $payment->update(['transaction_reference' => $reference]);
+        $payment->update([
+            'transaction_reference' => $reference,
+            'payment_method' => 'paystack',
+        ]);
 
         $result = $this->paystack->initializeTransaction(
             $email,
