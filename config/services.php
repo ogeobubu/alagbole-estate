@@ -35,4 +35,17 @@ return [
         ],
     ],
 
+    'termii' => [
+        'api_key' => env('TERMII_API_KEY'),
+        'secret_key' => env('TERMII_SECRET_KEY'),
+        'sender_id' => env('TERMII_SENDER_ID', 'EstatePay'),
+        'base_url' => env('TERMII_BASE_URL', 'https://api.ng.termii.com'),
+    ],
+
+    'vapid' => [
+        'public_key' => env('VAPID_PUBLIC_KEY'),
+        'private_key' => env('VAPID_PRIVATE_KEY'),
+        'subject' => env('VAPID_SUBJECT', 'mailto:ogeobubu@gmail.com'),
+    ],
+
 ];

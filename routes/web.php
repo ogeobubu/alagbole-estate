@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EstateController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PushNotificationController;
 use App\Http\Controllers\TenantController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -30,6 +31,10 @@ Route::middleware('auth')->group(function () {
     Route::resource('estates', EstateController::class);
 
     Route::resource('estates.tenants', TenantController::class);
+    Route::post('estates/{estate}/tenants/{tenant}/remind', [TenantController::class, 'sendReminder'])
+        ->name('estates.tenants.remind');
+    Route::post('estates/{estate}/tenants/remind-all', [TenantController::class, 'sendBulkReminders'])
+        ->name('estates.tenants.remindAll');
 
     Route::get('estates/{estate}/payments', [PaymentController::class, 'index'])
         ->name('estates.payments.index');
@@ -45,6 +50,20 @@ Route::middleware('auth')->group(function () {
         ->name('estates.payments.generate');
     Route::delete('estates/{estate}/payments/{payment}', [PaymentController::class, 'destroy'])
         ->name('estates.payments.destroy');
+
+    Route::post('/push/subscribe', [PushNotificationController::class, 'subscribe'])
+        ->name('push.subscribe');
+    Route::post('/push/unsubscribe', [PushNotificationController::class, 'unsubscribe'])
+        ->name('push.unsubscribe');
+    Route::get('/push/vapid-public-key', [PushNotificationController::class, 'vapidPublicKey'])
+        ->name('push.vapidPublicKey');
+});
+
+Route::get('/sw.js', function () {
+    return response()
+        ->header('Content-Type', 'application/javascript')
+        ->header('Cache-Control', 'no-cache')
+        ->file(resource_path('js/sw.js'));
 });
 
 require __DIR__.'/auth.php';

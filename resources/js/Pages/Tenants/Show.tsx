@@ -25,6 +25,16 @@ export default function Show({
                         >
                             Record Payment
                         </Link>
+                        <button
+                            onClick={() => {
+                                if (confirm(`Send SMS payment reminder to ${tenant.name}?`)) {
+                                    router.post(route('estates.tenants.remind', [estate.id, tenant.id]));
+                                }
+                            }}
+                            className="rounded-md bg-amber-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-600"
+                        >
+                            Send Reminder
+                        </button>
                         <Link
                             href={route('estates.tenants.edit', [estate.id, tenant.id])}
                             className="rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"

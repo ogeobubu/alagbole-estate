@@ -16,6 +16,12 @@ export default function Show({
         }
     };
 
+    const remindAllPending = () => {
+        if (confirm(`Send SMS reminders to all tenants with pending payments?`)) {
+            router.post(route('estates.tenants.remindAll', estate.id));
+        }
+    };
+
     return (
         <AuthenticatedLayout
             header={
@@ -81,6 +87,14 @@ export default function Show({
                                 >
                                     Generate Bills
                                 </button>
+                                {(totalTenants - paidCount) > 0 && (
+                                    <button
+                                        onClick={remindAllPending}
+                                        className="rounded-md bg-amber-500 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-600"
+                                    >
+                                        Remind {totalTenants - paidCount} Pending
+                                    </button>
+                                )}
                             </div>
                             <Link
                                 href={route('estates.tenants.create', estate.id)}
