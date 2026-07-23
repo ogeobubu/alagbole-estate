@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Estate;
 use App\Models\Payment;
 use App\Models\Tenant;
+use App\Notifications\NewTenantRegistered;
+use App\Notifications\RentDueReminder;
 use App\Services\PushNotificationService;
 use App\Services\TermiiSms;
 use Carbon\Carbon;
@@ -51,6 +53,8 @@ class TenantController extends Controller
         ]);
 
         $tenant = $estate->tenants()->create($validated);
+
+        $estate->user->notify(new NewTenantRegistered($tenant, $estate));
 
         return redirect()->route('estates.tenants.show', [$estate, $tenant])
             ->with('success', 'Tenant added successfully.');
@@ -129,9 +133,16 @@ class TenantController extends Controller
             route('estates.tenants.show', [$estate->id, $tenant->id])
         );
 
+        $emailSent = false;
+        if ($tenant->email) {
+            $tenant->notify(new RentDueReminder($tenant, $estate, $period, $tenant->rent_amount));
+            $emailSent = true;
+        }
+
         $parts = [];
         if ($smsSent) $parts[] = 'SMS';
         if ($pushResult['sent'] > 0) $parts[] = 'push notification';
+        if ($emailSent) $parts[] = 'email';
 
         return back()->with(
             count($parts) > 0 ? 'success' : 'error',
@@ -163,6 +174,7 @@ class TenantController extends Controller
         }
 
         $smsSent = 0;
+        $emailSent = 0;
         foreach ($pendingTenants as $tenant) {
             $amount = number_format($tenant->rent_amount);
             $message = "Hi {$tenant->name}, this is a reminder that your estate dues of ₦{$amount} for {$formattedPeriod} is still pending. " .
@@ -171,6 +183,11 @@ class TenantController extends Controller
 
             if ($sms->send($tenant->phone, $message)) {
                 $smsSent++;
+            }
+
+            if ($tenant->email) {
+                $tenant->notify(new RentDueReminder($tenant, $estate, $period, $tenant->rent_amount));
+                $emailSent++;
             }
         }
 
@@ -181,7 +198,7 @@ class TenantController extends Controller
             route('estates.show', $estate->id)
         );
 
-        return back()->with('success', "{$smsSent} SMS and {$pushResult['sent']} push notification(s) sent.");
+        return back()->with('success', "{$smsSent} SMS, {$emailSent} email(s), and {$pushResult['sent']} push notification(s) sent.");
     }
 
     private function authorizeEstate(Estate $estate): void

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Role;
 use App\Models\User;
+use App\Notifications\WelcomeNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
@@ -55,6 +56,8 @@ class UserController extends Controller
         if (!empty($validated['roles'])) {
             $user->roles()->sync($validated['roles']);
         }
+
+        $user->notify(new WelcomeNotification($validated['password']));
 
         return redirect()->route('admin.users.index')
             ->with('success', 'User created successfully.');

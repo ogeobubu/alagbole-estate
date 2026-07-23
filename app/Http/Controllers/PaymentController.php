@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Estate;
 use App\Models\Payment;
 use App\Models\Tenant;
+use App\Notifications\NewPaymentAlert;
+use App\Notifications\PaymentConfirmed;
 use App\Services\PaystackService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -91,6 +93,11 @@ class PaymentController extends Controller
             'paid_at' => now(),
         ]);
 
+        if ($tenant->email) {
+            $tenant->notify(new PaymentConfirmed($payment));
+        }
+        $estate->user->notify(new NewPaymentAlert($payment));
+
         return redirect()->route('estates.show', $estate)
             ->with('success', 'Payment recorded successfully!');
     }
@@ -120,6 +127,11 @@ class PaymentController extends Controller
             $validated['payment_method'],
             $validated['transaction_reference'] ?? null,
         );
+
+        if ($payment->tenant && $payment->tenant->email) {
+            $payment->tenant->notify(new PaymentConfirmed($payment));
+        }
+        $payment->estate->user->notify(new NewPaymentAlert($payment));
 
         return back()->with('success', 'Payment marked as paid!');
     }
@@ -242,6 +254,11 @@ class PaymentController extends Controller
             if ($payment) {
                 $payment->markAsPaid('paystack', $reference);
 
+                if ($payment->tenant && $payment->tenant->email) {
+                    $payment->tenant->notify(new PaymentConfirmed($payment));
+                }
+                $payment->estate->user->notify(new NewPaymentAlert($payment));
+
                 Log::info('Paystack payment verified', [
                     'payment_id' => $paymentId,
                     'reference' => $reference,
@@ -281,6 +298,11 @@ class PaymentController extends Controller
                 $payment = Payment::find($paymentId);
                 if ($payment && $payment->status !== 'paid') {
                     $payment->markAsPaid('paystack', $reference);
+
+                    if ($payment->tenant && $payment->tenant->email) {
+                        $payment->tenant->notify(new PaymentConfirmed($payment));
+                    }
+                    $payment->estate->user->notify(new NewPaymentAlert($payment));
 
                     Log::info('Paystack webhook: payment marked paid', [
                         'payment_id' => $paymentId,
