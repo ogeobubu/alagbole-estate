@@ -41,7 +41,7 @@ jobs:
       - name: Generate APP_KEY
         run: php artisan key:generate --force
 
-      - - name: Upload to InfinityFree via FTP
+      - name: Upload to InfinityFree via FTP
         run: |
           lftp -c "
             set ssl:verify-certificate no;
