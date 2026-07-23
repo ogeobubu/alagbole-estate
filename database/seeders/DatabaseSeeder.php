@@ -4,22 +4,86 @@ namespace Database\Seeders;
 
 use App\Models\Estate;
 use App\Models\Payment;
+use App\Models\Permission;
+use App\Models\Role;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $user = User::factory()->create([
+        // Seed permissions
+        $permissions = [
+            ['name' => 'Manage Users', 'slug' => 'manage-users', 'description' => 'Create, edit, and delete users'],
+            ['name' => 'Manage Roles', 'slug' => 'manage-roles', 'description' => 'Create, edit, and delete roles'],
+            ['name' => 'Manage Estates', 'slug' => 'manage-estates', 'description' => 'Create, edit, and delete estates'],
+            ['name' => 'Manage Tenants', 'slug' => 'manage-tenants', 'description' => 'Create, edit, and delete tenants'],
+            ['name' => 'Manage Payments', 'slug' => 'manage-payments', 'description' => 'Create, edit, and delete payments'],
+            ['name' => 'View Reports', 'slug' => 'view-reports', 'description' => 'View analytics and reports'],
+            ['name' => 'Manage Settings', 'slug' => 'manage-settings', 'description' => 'Manage platform settings'],
+        ];
+
+        foreach ($permissions as $perm) {
+            Permission::create($perm);
+        }
+
+        // Seed roles
+        $superAdmin = Role::create([
+            'name' => 'Super Admin',
+            'slug' => 'super-admin',
+            'description' => 'Full access to all platform features',
+        ]);
+        $superAdmin->permissions()->sync(Permission::all());
+
+        $admin = Role::create([
+            'name' => 'Admin',
+            'slug' => 'admin',
+            'description' => 'Can manage most platform features',
+        ]);
+        $admin->permissions()->sync(
+            Permission::whereIn('slug', ['manage-estates', 'manage-tenants', 'manage-payments', 'view-reports'])->pluck('id')
+        );
+
+        $manager = Role::create([
+            'name' => 'Manager',
+            'slug' => 'manager',
+            'description' => 'Limited access to estate management',
+        ]);
+        $manager->permissions()->sync(
+            Permission::whereIn('slug', ['manage-tenants', 'manage-payments', 'view-reports'])->pluck('id')
+        );
+
+        // Create super admin user
+        $adminUser = User::create([
+            'name' => 'Super Admin',
+            'email' => 'admin@estatepay.ng',
+            'password' => Hash::make('password'),
+            'is_admin' => true,
+        ]);
+        $adminUser->roles()->attach($superAdmin);
+
+        // Create demo estate manager
+        $demoUser = User::factory()->create([
             'name' => 'Demo User',
             'email' => 'demo@estatepay.ng',
             'password' => 'password',
         ]);
 
+        // Create an admin user
+        $adminManager = User::create([
+            'name' => 'Admin Manager',
+            'email' => 'manager@estatepay.ng',
+            'password' => Hash::make('password'),
+            'is_admin' => true,
+        ]);
+        $adminManager->roles()->attach($admin);
+
+        // Seed demo estate data
         $estate = Estate::create([
-            'user_id' => $user->id,
+            'user_id' => $demoUser->id,
             'name' => 'Royalty Estate',
             'address' => 'Alagbole, Ogun State',
             'units_count' => 15,

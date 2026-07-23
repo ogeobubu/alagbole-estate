@@ -4,19 +4,32 @@ import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import { Estate, Tenant, PageProps } from '@/types';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
+import { useState } from 'react';
+
+declare global {
+    interface Window {
+        PaystackPop?: {
+            setup: (config: Record<string, unknown>) => { openIframe: () => void };
+        };
+    }
+}
 
 export default function Create({
     estate,
     tenants,
     selectedTenant,
     currentPeriod,
+    paystackPublicKey,
 }: PageProps<{
     estate: Estate;
     tenants: Tenant[];
     selectedTenant: Tenant | null;
     currentPeriod: string;
+    paystackPublicKey: string;
 }>) {
+    const [payingOnline, setPayingOnline] = useState(false);
+
     const { data, setData, post, processing, errors } = useForm({
         tenant_id: selectedTenant?.id?.toString() ?? '',
         amount: selectedTenant?.rent_amount?.toString() ?? estate.monthly_dues_amount.toString(),
@@ -28,7 +41,42 @@ export default function Create({
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        post(route('estates.payments.store', estate.id));
+        if (data.payment_method === 'paystack') {
+            handlePaystackPayment();
+        } else {
+            post(route('estates.payments.store', estate.id));
+        }
+    };
+
+    const handlePaystackPayment = () => {
+        if (!data.tenant_id) {
+            return;
+        }
+
+        setPayingOnline(true);
+
+        router.post(
+            route('estates.payments.paystack', { estate: estate.id, payment: 'pending' }),
+            {
+                tenant_id: data.tenant_id,
+                amount: data.amount,
+                period: data.period,
+                payment_method: 'paystack',
+            },
+            {
+                preserveState: true,
+                onSuccess: (page) => {
+                    const props = page.props as Record<string, unknown>;
+                    const flash = props.flash as { data?: { authorization_url?: string; reference?: string } } | undefined;
+                    const paymentData = flash?.data;
+
+                    if (paymentData?.authorization_url) {
+                        window.location.href = paymentData.authorization_url;
+                    }
+                },
+                onFinish: () => setPayingOnline(false),
+            }
+        );
     };
 
     return (
@@ -119,24 +167,41 @@ export default function Create({
                                             onChange={(e) => setData('payment_method', e.target.value)}
                                         >
                                             <option value="bank_transfer">Bank Transfer</option>
-                                            <option value="paystack">Paystack</option>
+                                            <option value="paystack">Paystack (Online)</option>
                                             <option value="cash">Cash</option>
                                             <option value="pos">POS</option>
                                             <option value="ussd">USSD</option>
                                         </select>
                                         <InputError className="mt-2" message={errors.payment_method} />
                                     </div>
-                                    <div>
-                                        <InputLabel htmlFor="transaction_reference" value="Transaction Reference (optional)" />
-                                        <TextInput
-                                            id="transaction_reference"
-                                            className="mt-1 block w-full"
-                                            value={data.transaction_reference}
-                                            onChange={(e) => setData('transaction_reference', e.target.value)}
-                                        />
-                                        <InputError className="mt-2" message={errors.transaction_reference} />
-                                    </div>
+                                    {data.payment_method !== 'paystack' && (
+                                        <div>
+                                            <InputLabel htmlFor="transaction_reference" value="Transaction Reference (optional)" />
+                                            <TextInput
+                                                id="transaction_reference"
+                                                className="mt-1 block w-full"
+                                                value={data.transaction_reference}
+                                                onChange={(e) => setData('transaction_reference', e.target.value)}
+                                            />
+                                            <InputError className="mt-2" message={errors.transaction_reference} />
+                                        </div>
+                                    )}
                                 </div>
+
+                                {data.payment_method === 'paystack' && (
+                                    <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+                                        <div className="flex items-start gap-3">
+                                            <span className="text-indigo-600 text-lg">💳</span>
+                                            <div>
+                                                <p className="text-sm font-medium text-indigo-900">Online Payment via Paystack</p>
+                                                <p className="text-xs text-indigo-600 mt-1">
+                                                    You'll be redirected to Paystack's secure checkout to complete the payment.
+                                                    The payment will be automatically recorded after successful verification.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div>
                                     <InputLabel htmlFor="notes" value="Notes (optional)" />
@@ -157,8 +222,10 @@ export default function Create({
                                     >
                                         Cancel
                                     </Link>
-                                    <PrimaryButton disabled={processing}>
-                                        Record Payment
+                                    <PrimaryButton disabled={processing || payingOnline}>
+                                        {data.payment_method === 'paystack'
+                                            ? (payingOnline ? 'Redirecting...' : 'Pay with Paystack')
+                                            : 'Record Payment'}
                                     </PrimaryButton>
                                 </div>
                             </div>

@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
+use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EstateController;
 use App\Http\Controllers\PaymentController;
@@ -48,6 +51,8 @@ Route::middleware('auth')->group(function () {
         ->name('estates.payments.markPaid');
     Route::post('estates/{estate}/payments/generate', [PaymentController::class, 'generatePeriodPayments'])
         ->name('estates.payments.generate');
+    Route::post('estates/{estate}/payments/{payment}/paystack', [PaymentController::class, 'initializePaystack'])
+        ->name('estates.payments.paystack');
     Route::delete('estates/{estate}/payments/{payment}', [PaymentController::class, 'destroy'])
         ->name('estates.payments.destroy');
 
@@ -55,9 +60,18 @@ Route::middleware('auth')->group(function () {
         ->name('push.subscribe');
     Route::post('/push/unsubscribe', [PushNotificationController::class, 'unsubscribe'])
         ->name('push.unsubscribe');
-    Route::get('/push/vapid-public-key', [PushNotificationController::class, 'vapidPublicKey'])
+Route::get('/push/vapid-public-key', [PushNotificationController::class, 'vapidPublicKey'])
         ->name('push.vapidPublicKey');
 });
+
+Route::prefix('admin')
+    ->name('admin.')
+    ->middleware(['auth', 'verified', 'admin'])
+    ->group(function () {
+        Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
+        Route::resource('users', UserController::class);
+        Route::resource('roles', RoleController::class);
+    });
 
 Route::get('/sw.js', function () {
     return response()
@@ -65,5 +79,29 @@ Route::get('/sw.js', function () {
         ->header('Cache-Control', 'no-cache')
         ->file(resource_path('js/sw.js'));
 });
+
+Route::get('/payments/paystack/callback', [PaymentController::class, 'paystackCallback'])
+    ->name('payments.paystack.callback');
+
+Route::post('/webhooks/paystack', [PaymentController::class, 'paystackWebhook'])
+    ->name('payments.paystack.webhook');
+
+if (app()->environment('production')) {
+    Route::get('/deploy', function () {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+            $migrationOutput = \Illuminate\Support\Facades\Artisan::output();
+
+            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+            $seedOutput = \Illuminate\Support\Facades\Artisan::output();
+
+            return response("Migration & Seed Results:\n\n$migrationOutput\n\n$seedOutput", 200)
+                ->header('Content-Type', 'text/plain');
+        } catch (\Throwable $e) {
+            return response("Error: " . $e->getMessage(), 500)
+                ->header('Content-Type', 'text/plain');
+        }
+    });
+}
 
 require __DIR__.'/auth.php';
