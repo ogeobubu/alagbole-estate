@@ -41,6 +41,9 @@ jobs:
       - name: Generate APP_KEY
         run: php artisan key:generate --force
 
+      - name: Install lftp
+        run: sudo apt-get update && sudo apt-get install -y lftp
+
       - name: Upload to InfinityFree via FTP
         run: |
           lftp -c "
