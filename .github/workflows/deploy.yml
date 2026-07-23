@@ -49,21 +49,7 @@ jobs:
           FTP_USER: ${{ secrets.FTP_USERNAME }}
           FTP_PASS: ${{ secrets.FTP_PASSWORD }}
         run: |
-          lftp -c "
-            set ssl:verify-certificate no;
-            mirror --reverse --verbose --delete \
-              --exclude node_modules/ \
-              --exclude .git/ \
-              --exclude .github/ \
-              --exclude .env.example \
-              --exclude .env.backup \
-              --exclude tests/ \
-              --exclude .DS_Store \
-              --exclude \*.log \
-              --exclude database/ \
-              ./ htdocs/;
-            quit
-          "
+          lftp -e "set ssl:verify-certificate no; mirror --reverse --verbose --delete --exclude node_modules/ --exclude .git/ --exclude .github/ --exclude .env.example --exclude .env.backup --exclude tests/ --exclude .DS_Store --exclude '\*.log' --exclude database/ ./ htdocs/; quit" -u "$FTP_USER","$FTP_PASS" ftpupload.net
 
       - name: Run migrations on server
         run: |
