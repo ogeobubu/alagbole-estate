@@ -25,3 +25,6 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Workflow managed via GitHub web UI
+.github/workflows/deploy.yml
