@@ -57,7 +57,7 @@ jobs:
               --exclude .env.backup \
               --exclude tests/ \
               --exclude .DS_Store \
-              --exclude '*.log' \
+              --exclude \*.log \
               --exclude database/ \
               ./ htdocs/;
             quit
