@@ -90,19 +90,34 @@ Route::get('/deploy', function () {
     if (!app()->environment('production')) {
         return response('Not available', 403)->header('Content-Type', 'text/plain');
     }
+    $output = [];
+    $output[] = 'Environment: ' . app()->environment();
+    $output[] = 'APP_KEY set: ' . (config('app.key') ? 'Yes' : 'No');
+    $output[] = 'PHP version: ' . phpversion();
+
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        $output[] = 'Database: Connected';
+    } catch (\Throwable $e) {
+        $output[] = 'Database: ' . $e->getMessage();
+        return response(implode("\n", $output), 500)->header('Content-Type', 'text/plain');
+    }
+
     try {
         \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-        $migrationOutput = \Illuminate\Support\Facades\Artisan::output();
-
-        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
-        $seedOutput = \Illuminate\Support\Facades\Artisan::output();
-
-        return response("Migration & Seed Results:\n\n$migrationOutput\n\n$seedOutput", 200)
-            ->header('Content-Type', 'text/plain');
+        $output[] = 'Migration: ' . \Illuminate\Support\Facades\Artisan::output();
     } catch (\Throwable $e) {
-        return response("Error: " . $e->getMessage(), 500)
-            ->header('Content-Type', 'text/plain');
+        $output[] = 'Migration error: ' . $e->getMessage();
     }
+
+    try {
+        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+        $output[] = 'Seed: ' . \Illuminate\Support\Facades\Artisan::output();
+    } catch (\Throwable $e) {
+        $output[] = 'Seed error: ' . $e->getMessage();
+    }
+
+    return response(implode("\n", $output), 200)->header('Content-Type', 'text/plain');
 });
 
 require __DIR__.'/auth.php';
