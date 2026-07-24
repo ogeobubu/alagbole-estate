@@ -86,22 +86,23 @@ Route::get('/payments/paystack/callback', [PaymentController::class, 'paystackCa
 Route::post('/webhooks/paystack', [PaymentController::class, 'paystackWebhook'])
     ->name('payments.paystack.webhook');
 
-if (app()->environment('production')) {
-    Route::get('/deploy', function () {
-        try {
-            \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
-            $migrationOutput = \Illuminate\Support\Facades\Artisan::output();
+Route::get('/deploy', function () {
+    if (!app()->environment('production')) {
+        return response('Not available', 403)->header('Content-Type', 'text/plain');
+    }
+    try {
+        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        $migrationOutput = \Illuminate\Support\Facades\Artisan::output();
 
-            \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
-            $seedOutput = \Illuminate\Support\Facades\Artisan::output();
+        \Illuminate\Support\Facades\Artisan::call('db:seed', ['--force' => true]);
+        $seedOutput = \Illuminate\Support\Facades\Artisan::output();
 
-            return response("Migration & Seed Results:\n\n$migrationOutput\n\n$seedOutput", 200)
-                ->header('Content-Type', 'text/plain');
-        } catch (\Throwable $e) {
-            return response("Error: " . $e->getMessage(), 500)
-                ->header('Content-Type', 'text/plain');
-        }
-    });
-}
+        return response("Migration & Seed Results:\n\n$migrationOutput\n\n$seedOutput", 200)
+            ->header('Content-Type', 'text/plain');
+    } catch (\Throwable $e) {
+        return response("Error: " . $e->getMessage(), 500)
+            ->header('Content-Type', 'text/plain');
+    }
+});
 
 require __DIR__.'/auth.php';
