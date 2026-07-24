@@ -104,7 +104,7 @@ Route::get('/deploy', function () {
     }
 
     try {
-        \Illuminate\Support\Facades\Artisan::call('migrate', ['--force' => true]);
+        \Illuminate\Support\Facades\Artisan::call('migrate:fresh', ['--force' => true]);
         $output[] = 'Migration: ' . \Illuminate\Support\Facades\Artisan::output();
     } catch (\Throwable $e) {
         $output[] = 'Migration error: ' . $e->getMessage();
